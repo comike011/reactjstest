@@ -1,72 +1,99 @@
-var Records = React.createClass({
+var Record = React.createClass({
+
   getInitialState: function() {
-    return { records: this.props.data };
+    return { edit: false };
   },
 
-  getDefaultProps: function() {
-    return { records: [] };
+  handleToggle: function(e) {
+    e.preventDefault();
+    this.setState({ edit: !this.state.edit });
   },
 
-  addRecord: function(record) {
-    var records = React.addons.update(this.state.records, { $push: [record] })
-    this.setState({ records: records });
-  },
-
-  deleteRecord: function(record) {
-    var index = this.state.records.indexOf(record);
-    var records = React.addons.update(this.state.records,
-                                      { $splice: [[index, 1]] });
-                                      this.replaceState({ records: records});
-  },
-
-  updateRecord: function(record, data) {
-    var index = this.state.records.indexOf(record);
-    var records = React.addons.update(this.state.records,
-                                      { $splice: [[index, 1, data]] });
-                                      this.replaceState({ records: records });
-  },
-
-  credits: function() {
-    var credits = this.state.records.filter(function(val) {
-      return val.amount >= 0
+  handleDelete: function(e) {
+    $.ajax({
+      method: 'DELETE',
+      url: '/records/' + this.props.record.id,
+      dataType: 'JSON',
+      success: function() {
+        this.props.handleDeleteRecord(this.props.record)
+      }.bind(this)
     });
-    return credits.reduce(function(prev, curr) {
-      return prev + parseFloat(curr.amount);
-    }, 0)
   },
 
-  debits: function() {
-    var debits = this.state.records.filter(function(val) {
-      return val.amount < 0
+  handleEdit: function(e) {
+    e.preventDefault();
+    var data = { title: React.findDOMNode(this.refs.title).value,
+                 date: React.findDOMNode(this.refs.date).value,
+                 amount: React.findDOMNode(this.refs.amount).value }
+    $.ajax({
+      method: 'PUT',
+      url: '/records/' + this.props.record.id,
+      dataType: 'JSON',
+      data: { record: data },
+      success: function(data) {
+        this.setState({ edit: false });
+        this.props.handleEditRecord(this.props.record, data);
+      }.bind(this)
     });
-    return debits.reduce(function(prev, curr) {
-      return prev + parseFloat(curr.amount)
-    }, 0)
   },
 
-  balance: function() {
-    return this.debits() + this.credits();
-  },
-
-  render: function() {
+  recordRow: function() {
     return(
-      <div className='records'>
-      <h2 className='title'>
-      Records
-      </h2>
-      <div className='row'>
-      </div>
-      <table className='table table-bordered'>
-      <thead>
       <tr>
-      <th>Date</th>
-      <th>Title</th>
-      <th>Amount</th>
-      <th>Actions</th>
+        <td>{this.props.record.date}</td>
+        <td>{this.props.record.title}</td>
+        <td>{amountFormat(this.props.record.amount)}</td>
+        <td>
+          <a className='btn btn-default' onClick={this.handleToggle}>
+            Edit
+          </a>
+          <a className='btn btn-danger' onClick={this.handleDelete}>
+            Delete
+          </a>
+        </td>
       </tr>
-      </thead>
-            </table>
-      </div>
     );
+  },
+
+  recordForm: function() {
+    return(
+      <tr>
+        <td>
+          <input className='form-control' type='text'
+                 defaultValue={this.props.record.date} ref='date'>
+          </input>
+        </td>
+        <td>
+          <input className='form-control' type='text'
+                 defaultValue={this.props.record.title} ref='title'>
+          </input>
+        </td>
+        <td>
+          <input className='form-control' type='number'
+                 defaultValue={this.props.record.amount} ref='amount'>
+          </input>
+        </td>
+        <td>
+          <a className='btn btn-default' onClick={this.handleEdit}>
+            Update
+          </a>
+          <a className='btn btn-danger' onClick={this.handleToggle}>
+            Cancel
+          </a>
+        </td>
+      </tr>
+    );
+  },
+
+  renderedRecord: function() {
+    if (this.state.edit === true) {
+      return this.recordForm();
+    } else {
+      return this.recordRow();
+    }
+  },
+  
+  render: function() {
+    return this.renderedRecord();
   }
 });
